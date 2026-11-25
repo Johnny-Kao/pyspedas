@@ -1,4 +1,5 @@
 import unittest
+import numpy as np
 import pyspedas
 from pyspedas.tplot_tools import data_exists, tplot_rename, set_coords
 from pyspedas.projects.mms.cotrans.mms_qcotrans import mms_qcotrans
@@ -7,6 +8,35 @@ from numpy.testing import assert_allclose
 
 
 class CotransTestCases(unittest.TestCase):
+    def test_qcotrans_time_alignment(self):
+        # Three MEC samples describing a rotation of 45 degrees per second.
+        q_name = 'mms4_mec_quat_eci_to_gse'
+        in_name = 'mms4_test_qcotrans_input'
+        out_name = 'mms4_test_qcotrans_output'
+        self.addCleanup(pyspedas.del_data, [q_name, in_name, out_name])
+        q_times = np.array([0., 2., 4.])
+        half_angles = np.deg2rad(45. * q_times) / 2.
+        quaternions = np.column_stack((np.zeros(3), np.zeros(3),
+                                       np.sin(half_angles), np.cos(half_angles)))
+        pyspedas.store_data(q_name, data={'x': q_times, 'y': quaternions})
+
+        for times in (q_times, np.array([0.5, 1.5, 3.]),
+                      np.array([0.5, 3.])):
+            vectors = np.tile([1., 0., 0.], (len(times), 1))
+            pyspedas.store_data(in_name, data={'x': times, 'y': vectors})
+            for in_coord, out_coord, sign in (('eci', 'gse', 1),
+                                              ('gse', 'eci', -1)):
+                with self.subTest(times=times, in_coord=in_coord):
+                    result = mms_qcotrans(in_name, out_name, in_coord=in_coord,
+                                          out_coord=out_coord, probe='4')
+                    self.assertEqual(result, [out_name])
+                    data = pyspedas.get_data(out_name)
+                    angles = sign * np.deg2rad(45. * times)
+                    expected = np.column_stack((np.cos(angles), np.sin(angles),
+                                                np.zeros(len(times))))
+                    assert_allclose(data.times, times, rtol=0, atol=0)
+                    assert_allclose(data.y, expected, rtol=0, atol=1e-12)
+
     def test_qcotrans_sm_to_gse(self):
         pyspedas.projects.mms.mec()
         ret1 = mms_qcotrans('mms1_mec_v_sm', 'mms1_mec_v_sm_2gse', out_coord='gse')
