@@ -25,6 +25,8 @@ def mms_qcotrans(
     Perform coordinate transformations using MMS MEC quaternions.
 
     This routine uses SpacePy to do the quaternion transformation operations.
+    MEC quaternions are interpolated to the input vector timestamps whenever
+    their time grids differ.
 
     Parameters
     -----------

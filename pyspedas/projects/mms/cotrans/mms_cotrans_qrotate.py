@@ -1,9 +1,10 @@
 """
 This module provides functions for transforming MMS vector fields from one coordinate system to another using quaternion rotation.
 
-The main function of this module is mms_cotrans_qrotate, which performs a quaternion rotation on a tplot variable. The function takes in the names of the input and quaternion tplot variables, the name of the output tplot variable, and the coordinate system for the output data. An optional inverse flag allows the user to use the quaternion conjugate on the quaternion data prior to rotating. If the data and quaternion tplot variables are not the same length, the function will interpolate the data to the quaternion timestamps.
+The main function of this module is mms_cotrans_qrotate, which performs a quaternion rotation on a tplot variable. The function takes in the names of the input and quaternion tplot variables, the name of the output tplot variable, and the coordinate system for the output data. An optional inverse flag allows the user to use the quaternion conjugate on the quaternion data prior to rotating. If the data and quaternion tplot variables have different timestamps, the function interpolates the quaternions to the data timestamps.
 """
 import logging
+import numpy as np
 from pyspedas.tplot_tools import get_data, store_data, set_coords
 from pyspedas import tinterpol
 import spacepy.coordinates as coord
@@ -13,8 +14,8 @@ def mms_cotrans_qrotate(in_name, q_name, out_name, out_coord, inverse=False):
     """
     Performs a quaternion rotation on a tplot variable.
 
-    Note: this routine will interpolate the input data to the quaternion
-    timestamps if the data aren't the same length as the quaternions
+    The quaternions are interpolated to the input data timestamps when
+    the time grids differ, even if they contain the same number of samples.
 
     Parameters
     ----------
@@ -44,7 +45,7 @@ def mms_cotrans_qrotate(in_name, q_name, out_name, out_coord, inverse=False):
         logging.error(f"Problem reading quaternion variable: {q_name}")
         return
 
-    if len(data.times) != len(q_data.times):
+    if not np.array_equal(data.times, q_data.times):
         #logging.info("Interpolating the data to the MEC quaternion time stamps.")
         #tinterpol(in_name, q_name)
         #data = get_data(in_name + "-itrp")
