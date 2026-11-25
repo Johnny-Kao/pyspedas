@@ -29,6 +29,7 @@ def avg_data(names, trange=None, res=None, width=None,
         Default is 60 sec.
     width: int, optional
         Number of values for the averaging window.
+        If trange is specified, only samples within that range are used.
         If res is set, then width is ignored.
     newname: str/list of str, optional
         List of new names for tplot variables.
@@ -123,7 +124,8 @@ def avg_data(names, trange=None, res=None, width=None,
             time_end = time[-1]
 
         # Check for empty set
-        count_in_range = len(time[(time >= time_start) & (time <= time_end)])
+        in_range = (time >= time_start) & (time <= time_end)
+        count_in_range = np.count_nonzero(in_range)
         if time_end <= time_start or count_in_range < 2:
             logging.error('avg_data: No time values in provided time range.')
             continue
@@ -139,7 +141,9 @@ def avg_data(names, trange=None, res=None, width=None,
         else:
             # Given the width, compute bins
             bins = np.arange(count_in_range)
-            ind = np.floor(bins / width)
+            # Keep bin indices aligned with the original data and dependencies.
+            ind = np.full(time.shape, -1.0)
+            ind[in_range] = np.floor(bins / width)
             bin_count = int(count_in_range / width)
             dt = time_duration / bin_count
 
